@@ -332,7 +332,7 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
   <section id="stage-env" class="stage" aria-labelledby="t-env">
     <p class="kicker">20 · 10 · Ngày Phụ nữ Việt Nam</p>
     <h1 class="title" id="t-env">Có một phong thư gửi riêng cho bạn</h1>
-    <p class="lede">Nhập tên của bạn, rồi chạm vào phong thư để mở.</p>
+    <p class="lede">Chạm vào phong thư để mở.</p>
 
     <div class="env-wrap">
       <button id="env" class="envelope" type="button" aria-label="Mở phong thư">
@@ -351,16 +351,30 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
       </button>
     </div>
 
-    <div class="field">
-      <label for="in-name">Bạn tên là gì?</label>
-      <input id="in-name" type="text" maxlength="40" autocomplete="given-name" placeholder="Ví dụ: Lan Anh">
-    </div>
     <button id="btn-open" class="btn" type="button">Mở thiệp</button>
+  </section>
 
-    <div class="tone" role="group" aria-label="Kiểu lời chúc">
-      <span>Lời chúc dành cho</span>
-      <button class="chip" type="button" data-tone="lover" aria-pressed="true">Người thương</button>
-      <button class="chip" type="button" data-tone="friend" aria-pressed="false">Bạn bè</button>
+  <!-- 1b. Người gửi tạo link riêng cho từng người -->
+  <section id="stage-gen" class="stage" hidden aria-labelledby="t-gen">
+    <p class="kicker">Dành cho người gửi</p>
+    <h1 class="title" id="t-gen">Tạo thiệp cho một người</h1>
+    <p class="lede">Nhập tên người nhận và chọn kiểu lời chúc. Mỗi người có một link riêng. Họ chỉ việc mở thiệp và chọn ngày đi chơi.</p>
+    <div class="field" style="margin-top:22px">
+      <label for="g-name">Tên người nhận</label>
+      <input id="g-name" type="text" maxlength="40" autocomplete="off" placeholder="Ví dụ: Lan Anh">
+    </div>
+    <div class="tone" role="group" aria-label="Kiểu lời chúc" style="margin:0 0 20px">
+      <span>Kiểu lời chúc</span>
+      <button class="chip" type="button" data-gtone="friend" aria-pressed="true">Bạn bè</button>
+      <button class="chip" type="button" data-gtone="lover" aria-pressed="false">Người thương</button>
+    </div>
+    <div class="field">
+      <label for="g-link">Link gửi cho họ</label>
+      <input id="g-link" type="text" readonly placeholder="Nhập tên để tạo link">
+    </div>
+    <div class="submit-row">
+      <button id="g-copy" class="btn" type="button">Sao chép link</button>
+      <span id="g-msg" class="muted" role="status"></span>
     </div>
   </section>
 
@@ -380,11 +394,6 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
       <form id="rsvp" class="form-card" novalidate>
         <h2 id="t-form">Mình hẹn nhau nhé</h2>
         <p class="muted" style="margin:0 0 22px">Điền vài dòng, câu trả lời sẽ được gửi thẳng đến người tặng thiệp.</p>
-
-        <div class="field">
-          <label for="f-name">Tên của bạn</label>
-          <input id="f-name" type="text" maxlength="40" autocomplete="given-name">
-        </div>
 
         <fieldset>
           <legend>Bạn rảnh ngày nào?</legend>
@@ -457,7 +466,7 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
   var CONFIG = {
     // Dán địa chỉ Web app của Google Apps Script vào đây (xem hướng dẫn).
     endpoint: 'https://script.google.com/macros/s/AKfycbz13w2WRSw_ZdFdHyQ-F1oSi7yFo0vSErWTO0edg4HhIl9mjPaFY_0UKUs3rJZ6_AdR/exec',
-    senderName: 'phuong anh',
+    senderName: 'NV Trung Kiên',
     lover: { me: 'anh', you: 'em' },
     friend: { me: 'mình', you: 'bạn' }
   };
@@ -469,6 +478,12 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
 
   var state = { tone: 'lover', name: '', days: new Set(), slots: new Set(), foods: new Set(), acts: new Set() };
   if (/banbe|friend/i.test(location.hash || '')) state.tone = 'friend';
+  // Link riêng: ?ten=Lan%20Anh&kieu=banbe (hoặc nguoithuong). Người gửi chọn sẵn, người nhận không chỉnh.
+  var qs = new URLSearchParams(location.search);
+  var qKieu = (qs.get('kieu') || '').toLowerCase();
+  if (qKieu === 'banbe' || qKieu === 'friend') state.tone = 'friend';
+  else if (qKieu) state.tone = 'lover';
+  state.name = (qs.get('ten') || '').trim().slice(0, 40);
 
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   function $(id) { return document.getElementById(id); }
@@ -481,7 +496,7 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
     return e;
   }
   function show(id) {
-    ['stage-env', 'stage-card'].forEach(function (s) { $(s).hidden = (s !== id); });
+    ['stage-env', 'stage-card', 'stage-gen'].forEach(function (s) { $(s).hidden = (s !== id); });
     window.scrollTo(0, 0);
   }
 
@@ -531,7 +546,6 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
     s.style.whiteSpace = 'pre-line';
     s.style.setProperty('--i', String(c.lines.length + 1));
     $('btn-plan').style.setProperty('--i', String(c.lines.length + 2));
-    $('f-name').value = state.name.trim();
   }
 
   /* ---------- Phong thư ---------- */
@@ -539,7 +553,6 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
   function openEnvelope() {
     if (opened) return;
     opened = true;
-    state.name = $('in-name').value;
     $('env').classList.add('open');
     $('btn-open').disabled = true;
     setTimeout(function () {
@@ -549,25 +562,36 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
   }
   $('env').addEventListener('click', openEnvelope);
   $('btn-open').addEventListener('click', openEnvelope);
-  $('in-name').addEventListener('input', function (e) {
-    $('addr-name').textContent = e.target.value.trim() || 'người đặc biệt';
-  });
-  $('in-name').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { e.preventDefault(); openEnvelope(); }
-  });
+  $('addr-name').textContent = state.name || 'người đặc biệt';
 
-  document.querySelectorAll('[data-tone]').forEach(function (b) {
-    b.addEventListener('click', function () {
-      state.tone = b.getAttribute('data-tone');
-      syncTone();
-    });
-  });
-  function syncTone() {
-    document.querySelectorAll('[data-tone]').forEach(function (b) {
-      b.setAttribute('aria-pressed', b.getAttribute('data-tone') === state.tone ? 'true' : 'false');
-    });
+  /* ---------- Người gửi tạo link ---------- */
+  var gTone = 'friend';
+  function gLink() {
+    var n = $('g-name').value.trim();
+    if (!n) return '';
+    var base = location.href.split('#')[0].split('?')[0];
+    return base + '?ten=' + encodeURIComponent(n) + '&kieu=' + (gTone === 'friend' ? 'banbe' : 'nguoithuong');
   }
-  syncTone();
+  function gSync() {
+    document.querySelectorAll('[data-gtone]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-gtone') === gTone ? 'true' : 'false');
+    });
+    $('g-link').value = gLink();
+    $('g-msg').textContent = '';
+  }
+  document.querySelectorAll('[data-gtone]').forEach(function (b) {
+    b.addEventListener('click', function () { gTone = b.getAttribute('data-gtone'); gSync(); });
+  });
+  $('g-name').addEventListener('input', gSync);
+  $('g-copy').addEventListener('click', function () {
+    var box = $('g-link');
+    if (!box.value) { $('g-msg').textContent = 'Hãy nhập tên người nhận trước.'; $('g-name').focus(); return; }
+    var fallback = function () { box.focus(); box.select(); $('g-msg').textContent = 'Hãy giữ và chọn Sao chép trên link.'; };
+    try { navigator.clipboard.writeText(box.value).then(function () { $('g-msg').textContent = 'Đã sao chép link.'; }, fallback); }
+    catch (err) { fallback(); }
+  });
+  gSync();
+  if (!state.name) show('stage-gen');
 
   /* ---------- Bảng hẹn ---------- */
   function chip(parent, label, value, extra) {
@@ -640,7 +664,7 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
 
   function buildPayload() {
     return {
-      name: $('f-name').value.trim(),
+      name: state.name.trim(),
       tone: state.tone,
       days: Array.from(state.days).sort(),
       otherDate: $('f-otherdate').value || '',
@@ -668,7 +692,6 @@ legend { padding: 0; margin-bottom: 4px; font: italic 600 1.2rem/1.3 var(--f-dis
     e.preventDefault();
     var msg = $('form-msg');
     var p = buildPayload();
-    if (!p.name) { msg.textContent = 'Hãy cho mình biết tên của bạn.'; $('f-name').focus(); return; }
     if (!p.days.length && !p.otherDate) { msg.textContent = 'Hãy chọn ít nhất một ngày bạn rảnh.'; $('days').querySelector('button').focus(); return; }
     if (!p.slots.length && !p.time) { msg.textContent = 'Hãy chọn một khung giờ hoặc ghi giờ cụ thể.'; $('slots').querySelector('button').focus(); return; }
     msg.textContent = '';
